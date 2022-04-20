@@ -48,17 +48,20 @@ def correctLensDistort(img, str, zoom):
             imgClone.set_pixel(x, y, img.get_pixel(int(sourceX), int(sourceY)))
     sensor.flush()
 
-count = 0
+count = 10
 
 while(True):
     clock.tick()                    # Update the FPS clock.
     img = sensor.snapshot()         # Take a picture and return the image.
-    correctLensDistort(img, 1.25, 1)
+    correctLensDistort(img, 1.125, 1)
 
     for x in range(0, 320):
         for y in range(0, 240):
             img.set_pixel(x, y, imgClone.get_pixel(x, y))
-
+    time.sleep(1)
+    sensor.skip_frames(time=2500)
+    img.save("sample_" + str(count) + ".jpg")
     count += 1
+    #sensor.skip_frames(time = 2000)
     #print(clock.fps())              # Note: OpenMV Cam runs about half as fast when connected
                                     # to the IDE. The FPS should increase once disconnected.
