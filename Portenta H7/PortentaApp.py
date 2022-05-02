@@ -17,6 +17,7 @@ cellCountY = 7
 charWidth = 13
 charHeight = 18
 characterImages = [cellCountX * cellCountY]
+net = None
 
 character_classes = {
     0: "a",
@@ -343,6 +344,7 @@ def SendTextToClient(text):
 def Setup():
     #Initialize anything here
     InitCharacterImages()
+    net = tf.load('/Grid_Recognition_Model.tflite', load_to_fb=True)
 
 def Loop():
     while true:
