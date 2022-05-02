@@ -112,7 +112,7 @@ def SampleCell(rawimage, cimg, cell):
     v3set = vectorRange((x1, y1), v3, charHeight + 1, int(y3-y1+(y3-y1)/charHeight)) #Set of positions from top left to bottom left
     v4set = vectorRange((x2, y2), v4, charHeight + 1, int(y4-y2+(y4-y2)/charHeight)) #Set of positions from top right to bottom right
     
-    for y in range(0, min(len(v3set), height)):
+    for y in range(0, min(len(v3set), charHeight)):
         v1 = vectorNormalize(sub(v4set[y], v3set[y]))
 
         d1 = distance(v3set[y], v4set[y])
