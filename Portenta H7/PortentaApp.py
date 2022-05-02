@@ -2,6 +2,7 @@ import sensor
 import image
 import time
 import math
+from ulab import numpy as np
 
 ############################################################
 ################### GLOBAL VARIABLES #######################
@@ -17,6 +18,103 @@ charWidth = 13
 charHeight = 18
 characterImages = [cellCountX * cellCountY]
 
+character_classes = {
+    0: "a",
+    1: "b",
+    2: "c",
+    3: "d",
+    4: "e",
+    5: "f",
+    6: "g",
+    7: "h",
+    8: "i",
+    9: "j",
+    10: "k",
+    11: "l",
+    12: "m",
+    13: "n",
+    14: "o",
+    15: "p",
+    16: "q",
+    17: "r",
+    18: "s",
+    19: "t",
+    20: "u",
+    21: "v",
+    22: "w",
+    23: "x",
+    24: "y",
+    25: "z",
+    26: "A",
+    27: "B",
+    28: "C",
+    29: "D",
+    30: "E",
+    31: "F",
+    32: "G",
+    33: "H",
+    34: "I",
+    35: "J",
+    36: "K",
+    37: "L",
+    38: "M",
+    39: "N",
+    40: "O",
+    41: "P",
+    42: "Q",
+    43: "R",
+    44: "S",
+    45: "T",
+    46: "U",
+    47: "V",
+    48: "W",
+    49: "X",
+    50: "Y",
+    51: "Z",
+    52: "1",
+    53: "2",
+    54: "3",
+    55: "4",
+    56: "5",
+    57: "6",
+    58: "7",
+    59: "8",
+    60: "9",
+    61: "0",
+    62: "!",
+    63: "@",
+    64: "#",
+    65: "$",
+    66: "%",
+    67: "^",
+    68: "&",
+    69: "*",
+    70: "(",
+    71: ")",
+    72: "-",
+    73: "_",
+    74: "+",
+    75: "=",
+    76: "{",
+    77: "}",
+    78: "[",
+    79: "]",
+    80: "|",
+    81: "\\",
+    82: ":",
+    83: ";",
+    84: "\"",
+    85: "'",
+    86: "<",
+    87: ">",
+    88: ",",
+    89: ".",
+    90: "/",
+    91: "?",
+    92: "~",
+    93: "`",
+    94: " "
+}
 
 ############################################################
 ################### HELPER FUNCTIONS #######################
@@ -50,10 +148,10 @@ def vectorNormalize(v):
 def vectorRange(xy, v, count, dist):
     vals = []
     intv = int(dist/count + 0.5)
-    
+
     if intv < 1:
         intv = 1
-    
+
     for i in range(0, dist, intv):
         vals.append((xy[0] + v[0]*i, xy[1] + v[1]*i))
     return vals
@@ -66,7 +164,7 @@ def CalculateCellBounds(x1, y1, x2, y2, x3, y3, x4, y4):
 
     global cellCountX
     global cellCountY
-    
+
     #Create Vectors
     v3 = vectorNormalize((x3-x1, y3-y1)) # Vector from top left to bottom left
     v4 = vectorNormalize((x4-x2, y4-y2)) # Vector from top right to bottom right
@@ -92,18 +190,18 @@ def CalculateCellBounds(x1, y1, x2, y2, x3, y3, x4, y4):
             row.append([v1set[x],v1set[x+1],v2set[x],v2set[x+1]])
 
         cells.append(row)
-        
+
     return cells
 
 def SampleCell(rawimage, cimg, cell):
     global charWidth
     global charHeight
-    
+
     x1, y1 = cell[0][0], cell[0][1] # Top Left Corner
     x2, y2 = cell[1][0], cell[1][1] # Top Right Corner
     x3, y3 = cell[2][0], cell[2][1] # Bottom Left Corner
     x4, y4 = cell[3][0], cell[3][1] # Bottom Right Corner
-    
+
     #Create Vectors
     v3 = vectorNormalize((x3-x1, y3-y1)) # Vector from top left to bottom left
     v4 = vectorNormalize((x4-x2, y4-y2)) # Vector from top right to bottom right
@@ -111,7 +209,7 @@ def SampleCell(rawimage, cimg, cell):
     #Create Position Sets
     v3set = vectorRange((x1, y1), v3, charHeight + 1, int(y3-y1+(y3-y1)/charHeight)) #Set of positions from top left to bottom left
     v4set = vectorRange((x2, y2), v4, charHeight + 1, int(y4-y2+(y4-y2)/charHeight)) #Set of positions from top right to bottom right
-    
+
     for y in range(0, min(len(v3set), charHeight)):
         v1 = vectorNormalize(sub(v4set[y], v3set[y]))
 
@@ -130,23 +228,46 @@ def CutCellImages(img, cells):
         for y in range(0, len(cells[x])):
             corners = cells[x][y]
             SampleCell(img, characterImages[y * cellCountX + x], corners)
-    
+
     return characterImages
-            
+
 
 ############################################################
 
 def PredictChar(img):
-    #Run a character through the character recognition model. It will return
-    #an array of predictions. Use ArgMax to determine the class the had the
-    #highest probability. Then map the class index to the actual character.
+    #Do the classification and get the object returned by the inference.
+    TF_objs = net.classify(img)
+
+    #The object has a output, which is a list of classifcation scores
+    #for each of the output channels.
+
+    np.argsmax(TF_objs[0].output)
+
+
 
 ############################################################
 ################### CORE FUNCTIONS #########################
 ############################################################
 def TakePicture():
-    #take a picture with the portenta camera
-    #return the image
+    RED_LED_PIN = 1
+    BLUE_LED_PIN = 3
+
+    sensor.reset() # Initialize the camera sensor.
+    sensor.set_pixformat(sensor.GRAYSCALE) # or sensor.GRAYSCALE
+    sensor.set_framesize(sensor.QVGA) # or sensor.QQVGA (or others)
+    sensor.skip_frames(time = 2000) # Let new settings take affect.
+
+    pyb.LED(RED_LED_PIN).on()
+    sensor.skip_frames(time = 2000) # Give the user time to get ready.
+
+    pyb.LED(RED_LED_PIN).off()
+    pyb.LED(BLUE_LED_PIN).on()
+
+    sensor.snapshot().save("input.jpg")
+
+    pyb.LED(BLUE_LED_PIN).off()
+
+    return image.ImageIO("input.jpg", r)
 
 #Performs lens distortion correction on the img
 #Returns the corrected image
@@ -196,6 +317,13 @@ def SliceImage(img, x1, y1, x2, y2, x3, y3, x4, y4):
     return chars
 
 def DetectChars(chars):
+    finalStr = ""
+
+    for c in chars:
+        ch = PredictChar(c)
+        finalStr += ch
+
+    return finalStr
     #Iterate through each character image, running them through the character
     #recognition model. Append each returned character to a string
     #Recommended: Use the PredictChar helper function above to actually predict
@@ -215,7 +343,7 @@ def SendTextToClient(text):
 def Setup():
     #Initialize anything here
     InitCharacterImages()
-    
+
 def Loop():
     while true:
         img = TakePicture()
