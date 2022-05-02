@@ -164,7 +164,15 @@ def vectorRange(xy, v, count, dist):
         intv = 1
 
     for i in range(0, dist, intv):
+
+        if len(vals) == count:
+            break
+
         vals.append((xy[0] + v[0]*i, xy[1] + v[1]*i))
+
+    while not len(vals) == count:
+        vals.append(vals[-1])
+
     return vals
 
 ############################################################
