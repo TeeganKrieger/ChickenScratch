@@ -1,8 +1,8 @@
-import sensor
-import image
-import time
+import sensor, image, time, os
+import tf
+import pyb
 import math
-from ulab import numpy as np
+import ulab
 
 ############################################################
 ################### GLOBAL VARIABLES #######################
@@ -16,8 +16,9 @@ cellCountX = 15
 cellCountY = 7
 charWidth = 13
 charHeight = 18
-characterImages = [cellCountX * cellCountY]
-net = None
+characterImages = []
+gridModel = None
+charModel = None
 
 character_classes = {
     0: "a",
@@ -124,9 +125,18 @@ character_classes = {
 ################### SETUP ##################################
 
 def InitCharacterImages():
+    global characterImages
+    global cellCountY
+    global cellCountX
+    print("Initializing Images 1")
+    characterImages = [2 for i in range(cellCountX * cellCountY)]
+
     for y in range(0, cellCountY):
         for x in range(0, cellCountX):
             characterImages[y * cellCountX + x] = sensor.alloc_extra_fb(charWidth, charHeight,sensor.GRAYSCALE)
+            time.sleep(0.01)
+
+    print("Initializing Images 2")
 
 ############################################################
 
@@ -219,7 +229,7 @@ def SampleCell(rawimage, cimg, cell):
         v1set = vectorRange(v3set[y], v1, charWidth + 1, int(d1 + d1/charWidth))
 
         for x in range(0, min(len(v1set),charWidth)):
-            cimg.set_pixel(x, y, rawimage.get_pixel(v1set[x][0],v1set[x][1]))
+            cimg.set_pixel(x, y, rawimage.get_pixel(int(v1set[x][0]),int(v1set[x][1])))
 
     return cimg
 
@@ -228,7 +238,7 @@ def CutCellImages(img, cells):
     for x in range(0, len(cells)):
         for y in range(0, len(cells[x])):
             corners = cells[x][y]
-            SampleCell(img, characterImages[y * cellCountX + x], corners)
+            SampleCell(img, characterImages[x * cellCountY + y], corners)
 
     return characterImages
 
@@ -236,14 +246,15 @@ def CutCellImages(img, cells):
 ############################################################
 
 def PredictChar(img):
+    global charModel
     #Do the classification and get the object returned by the inference.
-    TF_objs = net.classify(img)
+    TF_objs = tf.classify('Character_Recognition_Model.tflite', img)
 
     #The object has a output, which is a list of classifcation scores
     #for each of the output channels.
 
-    np.argsmax(TF_objs[0].output)
-
+    cl = ulab.numpy.argmax(TF_objs[0].output())
+    return character_classes[cl]
 
 
 ############################################################
@@ -264,11 +275,11 @@ def TakePicture():
     pyb.LED(RED_LED_PIN).off()
     pyb.LED(BLUE_LED_PIN).on()
 
-    sensor.snapshot().save("input.jpg")
+    img = sensor.snapshot()
 
     pyb.LED(BLUE_LED_PIN).off()
 
-    return image.ImageIO("input.jpg", r)
+    return img
 
 #Performs lens distortion correction on the img
 #Returns the corrected image
@@ -306,8 +317,15 @@ def CorrectLensDistortion(img):
     return imgCorrected
 
 def PredictGrid(img):
+    global gridModel
+
+    TF_objs = tf.classify('Grid_Recognition_Model.tflite', img)
+
+    return round(TF_objs[0].output()[0]),round(TF_objs[0].output()[1]),round(TF_objs[0].output()[2]),round(TF_objs[0].output()[3]),round(TF_objs[0].output()[4]),round(TF_objs[0].output()[5]),round(TF_objs[0].output()[6]),round(TF_objs[0].output()[7]),round(TF_objs[0].output()[8])
+
     #Pass the image into the grid prediction model
     #Return the results of the grid prediction model
+
 
 #Slice the image up into many sub images using the image slicing techniques
 #Created for the training data preprocessor
@@ -332,6 +350,7 @@ def DetectChars(chars):
     #return the string
 
 def SendTextToClient(text):
+    print(text)
     #Send the parsed text to the client on the computer.
     #This will be done via bluetooth Low Energy.
     #This part will be tricky as I've played with BLE before
@@ -342,26 +361,37 @@ def SendTextToClient(text):
 ################### MAIN FUNCTIONS #########################
 ############################################################
 def Setup():
+    global charModel
+    global gridModel
     #Initialize anything here
+    print("Initializing Images")
     InitCharacterImages()
-    net = tf.load('/Grid_Recognition_Model.tflite', load_to_fb=True)
+    print("Loading Models")
+    ##charModel = tf.load('/Character_Recognition_Model.tflite', load_to_fb=True)
+    ##gridModel = tf.load('/Grid_Recognition_Model.tflite', load_to_fb=True)
 
 def Loop():
-    while true:
+    while True:
+        print("Taking Picture")
         img = TakePicture()
+        print("Correcting lens distortion")
         img = CorrectLensDistortion(img)
+        print("Predicting Grid")
         valid, x1, y1, x2, y2, x3, y3, x4, y4 = PredictGrid(img)
 
         #If our image is not valid (No corners found), goto next iteration
-        if (valid != 1)
+        if (valid != 1):
             continue
 
+        print("Slicing Image")
         chars = SliceImage(img, x1, y1, x2, y2, x3, y3, x4, y4)
+        print("Detecting Characters")
         text = DetectChars(chars)
         SendTextToClient(text)
 
 ############################################################
 ################### EXECUTE ################################
 ############################################################
+
 Setup()
 Loop()
