@@ -20,6 +20,10 @@ characterImages = []
 gridModel = None
 charModel = None
 
+RED_LED_PIN = 1
+BLUE_LED_PIN = 3
+GREEN_LED_PIN = 2
+
 character_classes = {
     0: "a",
     1: "b",
@@ -128,15 +132,12 @@ def InitCharacterImages():
     global characterImages
     global cellCountY
     global cellCountX
-    print("Initializing Images 1")
     characterImages = [2 for i in range(cellCountX * cellCountY)]
 
     for y in range(0, cellCountY):
         for x in range(0, cellCountX):
             characterImages[y * cellCountX + x] = sensor.alloc_extra_fb(charWidth, charHeight,sensor.GRAYSCALE)
             time.sleep(0.01)
-
-    print("Initializing Images 2")
 
 ############################################################
 
@@ -269,8 +270,10 @@ def PredictChar(img):
 ################### CORE FUNCTIONS #########################
 ############################################################
 def TakePicture():
-    RED_LED_PIN = 1
-    BLUE_LED_PIN = 3
+
+    global GREEN_LED_PIN
+    global RED_LED_PIN
+    global BLUE_LED_PIN
 
     sensor.reset() # Initialize the camera sensor.
     sensor.set_pixformat(sensor.GRAYSCALE) # or sensor.GRAYSCALE
@@ -339,15 +342,36 @@ def PredictGrid(img):
 #Created for the training data preprocessor
 #Return an array of images in order from top left to bottom right
 def SliceImage(img, x1, y1, x2, y2, x3, y3, x4, y4):
+    global GREEN_LED_PIN
+    global RED_LED_PIN
+    global BLUE_LED_PIN
+
+    pyb.LED(RED_LED_PIN).on()
+    pyb.LED(GREEN_LED_PIN).on()
     cells = CalculateCellBounds(x1, y1, x2, y2, x3, y3, x4, y4)
+    pyb.LED(RED_LED_PIN).off()
+    pyb.LED(GREEN_LED_PIN).off()
+
+    time.sleep(0.2)
+
+    pyb.LED(RED_LED_PIN).on()
+    pyb.LED(GREEN_LED_PIN).on()
+
     chars = CutCellImages(img, cells)
+
+    pyb.LED(RED_LED_PIN).off()
+    pyb.LED(GREEN_LED_PIN).off()
+
     return chars
 
 def DetectChars(chars):
     finalStr = ""
 
     for c in chars:
+        pyb.LED(GREEN_LED_PIN).on()
         ch = PredictChar(c)
+        pyb.LED(GREEN_LED_PIN).off()
+        time.sleep(0.05)
         finalStr += ch
 
     return finalStr
@@ -365,6 +389,27 @@ def SendTextToClient(text):
     #And couldn't get it working. If all else fails, we will
     #Find another solution.
 
+def BlinkError():
+    global GREEN_LED_PIN
+    global RED_LED_PIN
+    global BLUE_LED_PIN
+
+    pyb.LED(GREEN_LED_PIN).off()
+    pyb.LED(RED_LED_PIN).off()
+    pyb.LED(BLUE_LED_PIN).off()
+
+    pyb.LED(RED_LED_PIN).on()
+    time.sleep(0.2)
+    pyb.LED(RED_LED_PIN).off()
+    time.sleep(0.2)
+    pyb.LED(RED_LED_PIN).on()
+    time.sleep(0.2)
+    pyb.LED(RED_LED_PIN).off()
+    time.sleep(0.2)
+    pyb.LED(RED_LED_PIN).on()
+    time.sleep(0.2)
+    pyb.LED(RED_LED_PIN).off()
+
 ############################################################
 ################### MAIN FUNCTIONS #########################
 ############################################################
@@ -372,30 +417,27 @@ def Setup():
     global charModel
     global gridModel
     #Initialize anything here
-    print("Initializing Images")
     InitCharacterImages()
-    print("Loading Models")
     ##charModel = tf.load('/Character_Recognition_Model.tflite', load_to_fb=True)
     ##gridModel = tf.load('/Grid_Recognition_Model.tflite', load_to_fb=True)
 
 def Loop():
     while True:
-        print("Taking Picture")
         img = TakePicture()
-        print("Correcting lens distortion")
         img = CorrectLensDistortion(img)
-        print("Predicting Grid")
         valid, x1, y1, x2, y2, x3, y3, x4, y4 = PredictGrid(img)
 
         #If our image is not valid (No corners found), goto next iteration
         if (valid != 1):
+            BlinkError()
             continue
 
-        print("Slicing Image")
-        chars = SliceImage(img, x1, y1, x2, y2, x3, y3, x4, y4)
-        print("Detecting Characters")
-        text = DetectChars(chars)
-        SendTextToClient(text)
+        try:
+            chars = SliceImage(img, x1, y1, x2, y2, x3, y3, x4, y4)
+            text = DetectChars(chars)
+            SendTextToClient(text)
+        except:
+            BlinkError()
 
 ############################################################
 ################### EXECUTE ################################
