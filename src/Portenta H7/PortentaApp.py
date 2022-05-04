@@ -180,6 +180,7 @@ def vectorRange(xy, v, count, dist):
 
 ################### IMAGE SLICING ##########################
 
+#Calculates the corners of all cells within a grid
 def CalculateCellBounds(x1, y1, x2, y2, x3, y3, x4, y4):
 
     global cellCountX
@@ -213,6 +214,7 @@ def CalculateCellBounds(x1, y1, x2, y2, x3, y3, x4, y4):
 
     return cells
 
+#Samples the image within a cell
 def SampleCell(rawimage, cimg, cell):
     global charWidth
     global charHeight
@@ -242,6 +244,7 @@ def SampleCell(rawimage, cimg, cell):
 
     return cimg
 
+#Cuts a grid image into cell images
 def CutCellImages(img, cells):
     global characterImages
     for x in range(0, len(cells)):
@@ -254,13 +257,11 @@ def CutCellImages(img, cells):
 
 ############################################################
 
+#Do the classification and get the object returned by the inference.
 def PredictChar(img):
     global charModel
-    #Do the classification and get the object returned by the inference.
+   
     TF_objs = tf.classify('Character_Recognition_Model.tflite', img)
-
-    #The object has a output, which is a list of classifcation scores
-    #for each of the output channels.
 
     cl = ulab.numpy.argmax(TF_objs[0].output())
     return character_classes[cl]
@@ -327,16 +328,14 @@ def CorrectLensDistortion(img):
             imgCorrected.set_pixel(x, y, img.get_pixel(int(sourceX), int(sourceY)))
     return imgCorrected
 
+#Pass the image into the grid prediction model
+#Return the results of the grid prediction model
 def PredictGrid(img):
     global gridModel
 
     TF_objs = tf.classify('Grid_Recognition_Model.tflite', img)
 
     return round(TF_objs[0].output()[0]),round(TF_objs[0].output()[1]),round(TF_objs[0].output()[2]),round(TF_objs[0].output()[3]),round(TF_objs[0].output()[4]),round(TF_objs[0].output()[5]),round(TF_objs[0].output()[6]),round(TF_objs[0].output()[7]),round(TF_objs[0].output()[8])
-
-    #Pass the image into the grid prediction model
-    #Return the results of the grid prediction model
-
 
 #Slice the image up into many sub images using the image slicing techniques
 #Created for the training data preprocessor
@@ -364,6 +363,9 @@ def SliceImage(img, x1, y1, x2, y2, x3, y3, x4, y4):
 
     return chars
 
+#Iterate through each character image, running them through the character
+#recognition model. Appends each returned character to a string
+#returns the string
 def DetectChars(chars):
     finalStr = ""
 
@@ -375,20 +377,13 @@ def DetectChars(chars):
         finalStr += ch
 
     return finalStr
-    #Iterate through each character image, running them through the character
-    #recognition model. Append each returned character to a string
-    #Recommended: Use the PredictChar helper function above to actually predict
-    #and map the character.
-    #return the string
 
+#Send the parsed text to the client on the computer.
+#Printing the text sends it over the serial port
 def SendTextToClient(text):
     print(text)
-    #Send the parsed text to the client on the computer.
-    #This will be done via bluetooth Low Energy.
-    #This part will be tricky as I've played with BLE before
-    #And couldn't get it working. If all else fails, we will
-    #Find another solution.
 
+#Blink the led red if an error occurs
 def BlinkError():
     global GREEN_LED_PIN
     global RED_LED_PIN
@@ -416,7 +411,6 @@ def BlinkError():
 def Setup():
     global charModel
     global gridModel
-    #Initialize anything here
     InitCharacterImages()
     ##charModel = tf.load('/Character_Recognition_Model.tflite', load_to_fb=True)
     ##gridModel = tf.load('/Grid_Recognition_Model.tflite', load_to_fb=True)
